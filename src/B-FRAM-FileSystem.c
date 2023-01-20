@@ -7,9 +7,19 @@
  Description : Basic structure of future file system applications
  ============================================================================
  */
-#define FRAM_SIZE 8192
-#define MAX_FILENAME_SIZE 50
 #define MAX_FILES	10
+#define FRAM_SIZE 8192
+#define MAX_FILENAME_SIZE 10
+
+#define FILE_SIZE 8+(MAX_FILENAME_SIZE*8)
+
+#define FS_SIZE FILE_SIZE*MAX_FILES+4
+#define FS_OFFSET FS_SIZE
+
+#define USABLE_SIZE FRAM_SIZE - FS_SIZE
+
+
+
 
 #include <stdio.h>
 #include <stdint.h>
@@ -53,23 +63,23 @@ typedef struct file_system
   file_t files[MAX_FILES];
   uint16_t file_idx;
   uint16_t write_ptr;
-  uint16_t free_bytes ;
+
 } file_system_t;
 
 
 FRAM_t FRAM;
-file_system_t BFFS; //Put this in header file
+file_system_t BFFS;
 
 
 bffs_st mount_fs(uint16_t fs_size)
 {
-	  if (fs_size > FRAM_SIZE)
+	  if (fs_size > USABLE_SIZE)
 	  {
 		  return MOUNT_FS_NO_MEMORY;
 	  }
 	  BFFS.file_idx = 0;
-	  BFFS.write_ptr = 0;
-	  BFFS.free_bytes = fs_size;
+	  BFFS.write_ptr = FS_OFFSET;
+
 	  return MOUNT_FS_SUCCESS;
 }
 
@@ -101,7 +111,7 @@ bffs_st create_file(char* filename, uint16_t file_size, file_t** file_ptr_ptr)
 		return CREATE_FILE_BAD_SIZE;
 	}
 	/*Check file size is not too large*/
-	if ((file_size + BFFS.write_ptr) > FRAM_SIZE)
+	if ((file_size + BFFS.write_ptr) > USABLE_SIZE)
 	{
 		return CREATE_FILE_FILE_TOO_LARGE;
 	}
@@ -172,8 +182,17 @@ bffs_st read_file(file_t* file_ptr, uint16_t data_length, void* data_ptr)
 	return READ_FILE_SUCCESS;
 }
 
-
 //clear file, reset write pointer and write all 0s
+//getfsfree bytes
+//getfilefree bytes
+//loadFS
+//ftell
+//fseek
+//freadat
+//fwriteat
+//getmax files
+//get FS size
+//get n files
 
 int main(void)
 {
@@ -190,6 +209,8 @@ int main(void)
 
 	char myfilename1[10] = "file1.txt";
 	char myfilename2[10] = "file2.txt";
+
+	status = mount_fs(USABLE_SIZE);
 
 	status = create_file(myfilename1,10,&myfile1);
 	status = create_file(myfilename2,10,&myfile2);
