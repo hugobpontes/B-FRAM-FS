@@ -32,6 +32,7 @@ typedef enum
 	CREATE_FILE_BAD_SIZE,
 	CREATE_FILE_FILE_TOO_LARGE,
 	CREATE_FILE_FILENAME_TAKEN,
+	CREATE_FILE_INVALID_FILE_PTR,
 	//
     MOUNT_FS_SUCCESS_LOADED,
 	MOUNT_FS_SUCCESS_NEW,
@@ -39,12 +40,20 @@ typedef enum
 	//
     WRITE_FILE_SUCCESS,
 	WRITE_FILE_OVERFLOW,
+	WRITE_FILE_INVALID_FILE_PTR,
+    WRITE_FILE_INVALID_DATA_PTR,
 	//
     READ_FILE_SUCCESS,
 	READ_FILE_OVERFLOW,
+	READ_FILE_INVALID_FILE_PTR,
+    READ_FILE_INVALID_DATA_PTR,
 	//
 	OPEN_FILE_SUCCESS,
 	OPEN_FILE_FILE_NOT_FOUND,
+	OPEN_FILE_INVALID_FILE_PTR,
+	//
+	CLEAR_FILE_SUCCESS,
+	CLEAR_FILE_INVALID_FILE_PTR,
 } bffs_st;
 
 typedef char FRAM_t[FRAM_SIZE];
@@ -71,6 +80,13 @@ typedef struct file_system
 FRAM_t FRAM;
 file_system_t BFFS;
 
+/* Driver functions */
+
+void get_FRAM_status(void* data_ptr)
+{
+
+}
+
 void write_FRAM(uint16_t address,uint16_t data_length,void* data_ptr)
 {
 	for(uint16_t idx = 0;idx<data_length;idx++)
@@ -87,7 +103,7 @@ void read_FRAM(uint16_t address,uint16_t data_length,void* data_ptr)
 	}
 }
 
-
+/* File System functions */
 bffs_st mount_fs(uint16_t fs_size)
 {
 	  //check if FS data is available at the beginning of FRAM.
@@ -107,7 +123,10 @@ bffs_st mount_fs(uint16_t fs_size)
 
 bffs_st create_file(char* filename, uint16_t file_size, file_t** file_ptr_ptr)
 {
-
+	if (file_ptr_ptr == NULL)
+	{
+		return CREATE_FILE_INVALID_FILE_PTR;
+	}
 	//Get filename that is being created and verify its validity
 	char temp_str[MAX_FILENAME_SIZE] = {0};
 	for (uint8_t idx = 0; *(filename+idx) != '\0'; idx++)
@@ -157,6 +176,10 @@ bffs_st create_file(char* filename, uint16_t file_size, file_t** file_ptr_ptr)
 
 bffs_st open_file(char* filename,file_t** file_ptr_ptr)
 {
+	if (file_ptr_ptr == NULL)
+	{
+		return OPEN_FILE_INVALID_FILE_PTR;
+	}
 	//Get string that is being searched
 	char temp_str[MAX_FILENAME_SIZE] = {0};
 	for (uint8_t idx = 0; *(filename+idx) != '\0'; idx++)
@@ -179,6 +202,14 @@ bffs_st open_file(char* filename,file_t** file_ptr_ptr)
 
 bffs_st write_file(file_t* file_ptr, uint16_t data_length, void* data_ptr)
 {
+	if (file_ptr == NULL)
+	{
+		return WRITE_FILE_INVALID_FILE_PTR;
+	}
+	if (data_ptr == NULL)
+	{
+		return WRITE_FILE_INVALID_DATA_PTR;
+	}
 	uint16_t write_end_ptr = file_ptr->write_ptr+data_length;
 	if (write_end_ptr > file_ptr->end_ptr)
 	{
@@ -191,6 +222,14 @@ bffs_st write_file(file_t* file_ptr, uint16_t data_length, void* data_ptr)
 
 bffs_st read_file(file_t* file_ptr, uint16_t data_length, void* data_ptr)
 {
+	if (file_ptr == NULL)
+	{
+		return READ_FILE_INVALID_FILE_PTR;
+	}
+	if (data_ptr == NULL)
+	{
+		return READ_FILE_INVALID_DATA_PTR;
+	}
 	uint16_t read_end_ptr = file_ptr->read_ptr+data_length;
 	if (read_end_ptr > file_ptr->end_ptr)
 	{
@@ -199,6 +238,22 @@ bffs_st read_file(file_t* file_ptr, uint16_t data_length, void* data_ptr)
 	read_FRAM(file_ptr->read_ptr,data_length,data_ptr);
 	file_ptr->read_ptr = file_ptr->start_ptr;
 	return READ_FILE_SUCCESS;
+}
+
+bffs_st clear_file(file_t* file_ptr)
+{
+	uint8_t zero = 0;
+
+	if (file_ptr == NULL)
+	{
+		return CLEAR_FILE_INVALID_FILE_PTR;
+	}
+	for (uint32_t idx = 0; idx<(file_ptr->end_ptr-file_ptr->start_ptr);idx++)
+	{
+		write_FRAM(file_ptr->start_ptr+idx,1,&zero);
+	}
+	return CLEAR_FILE_SUCCESS;
+
 }
 
 //clear file, reset write pointer and write all 0s
@@ -241,7 +296,10 @@ int main(void)
 	status = read_file(myfile2,3,data_r2);
 
 	printf("Data Read from File 1: [%d,%d,%d,%d,%d,%d]\n",data_r1[0],data_r1[1],data_r1[2],data_r1[3],data_r1[4],data_r1[5]);
-	printf("Data Read File ptr 2: [%d,%d,%d]\n",data_r2[0],data_r2[1],data_r2[2]);
+	printf("Data Read from File 2: [%d,%d,%d]\n",data_r2[0],data_r2[1],data_r2[2]);
+	clear_file(myfile1);
+	status = read_file(myfile1,6,data_r1);
+	printf("Data Read from File 1: [%d,%d,%d,%d,%d,%d]\n",data_r1[0],data_r1[1],data_r1[2],data_r1[3],data_r1[4],data_r1[5]);
 }
 
 
