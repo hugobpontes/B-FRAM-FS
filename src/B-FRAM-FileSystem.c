@@ -33,7 +33,8 @@ typedef enum
 	CREATE_FILE_FILE_TOO_LARGE,
 	CREATE_FILE_FILENAME_TAKEN,
 	//
-    MOUNT_FS_SUCCESS,
+    MOUNT_FS_SUCCESS_LOADED,
+	MOUNT_FS_SUCCESS_NEW,
 	MOUNT_FS_NO_MEMORY,
 	//
     WRITE_FILE_SUCCESS,
@@ -70,9 +71,30 @@ typedef struct file_system
 FRAM_t FRAM;
 file_system_t BFFS;
 
+void write_FRAM(uint16_t address,uint16_t data_length,void* data_ptr)
+{
+	for(uint16_t idx = 0;idx<data_length;idx++)
+	{
+		FRAM[address+idx]=*(uint8_t*)(data_ptr+idx);
+	}
+}
+
+void read_FRAM(uint16_t address,uint16_t data_length,void* data_ptr)
+{
+	for(uint16_t idx = 0;idx<data_length;idx++)
+	{
+		*(uint8_t*)(data_ptr+idx)=FRAM[address+idx];
+	}
+}
+
 
 bffs_st mount_fs(uint16_t fs_size)
 {
+	  //check if FS data is available at the beginning of FRAM.
+	  	  //load if yes
+	  //else
+		 //mount from scratch
+
 	  if (fs_size > USABLE_SIZE)
 	  {
 		  return MOUNT_FS_NO_MEMORY;
@@ -80,7 +102,7 @@ bffs_st mount_fs(uint16_t fs_size)
 	  BFFS.file_idx = 0;
 	  BFFS.write_ptr = FS_OFFSET;
 
-	  return MOUNT_FS_SUCCESS;
+	  return MOUNT_FS_SUCCESS_NEW;
 }
 
 bffs_st create_file(char* filename, uint16_t file_size, file_t** file_ptr_ptr)
@@ -159,12 +181,11 @@ bffs_st write_file(file_t* file_ptr, uint16_t data_length, void* data_ptr)
 {
 	uint16_t write_end_ptr = file_ptr->write_ptr+data_length;
 	if (write_end_ptr > file_ptr->end_ptr)
-		return WRITE_FILE_OVERFLOW;
-	for (uint16_t idx = 0; idx < data_length; idx++)
 	{
-		FRAM[file_ptr->write_ptr]=*(uint8_t*)(data_ptr+idx);//replace this with write_byte_FRAM function so that this is loosely coupled
-		file_ptr->write_ptr++;
+		return WRITE_FILE_OVERFLOW;
 	}
+	write_FRAM(file_ptr->write_ptr,data_length,data_ptr);
+	file_ptr->write_ptr+=data_length;
 	return WRITE_FILE_SUCCESS;
 }
 
@@ -172,20 +193,17 @@ bffs_st read_file(file_t* file_ptr, uint16_t data_length, void* data_ptr)
 {
 	uint16_t read_end_ptr = file_ptr->read_ptr+data_length;
 	if (read_end_ptr > file_ptr->end_ptr)
-		return READ_FILE_OVERFLOW;
-	for (uint16_t idx = 0; idx < data_length; idx++)
 	{
-		*(uint8_t*)(data_ptr+idx) = FRAM[file_ptr->read_ptr];//replace this with read_byte_FRAM function so that this is loosely coupled
-		file_ptr->read_ptr++;
+		return READ_FILE_OVERFLOW;
 	}
-	file_ptr->read_ptr = 0;
+	read_FRAM(file_ptr->read_ptr,data_length,data_ptr);
+	file_ptr->read_ptr = file_ptr->start_ptr;
 	return READ_FILE_SUCCESS;
 }
 
 //clear file, reset write pointer and write all 0s
 //getfsfree bytes
 //getfilefree bytes
-//loadFS
 //ftell
 //fseek
 //freadat
@@ -225,6 +243,7 @@ int main(void)
 	printf("Data Read from File 1: [%d,%d,%d,%d,%d,%d]\n",data_r1[0],data_r1[1],data_r1[2],data_r1[3],data_r1[4],data_r1[5]);
 	printf("Data Read File ptr 2: [%d,%d,%d]\n",data_r2[0],data_r2[1],data_r2[2]);
 }
+
 
 
 
