@@ -1,8 +1,8 @@
 /*
- * dummy_fram_driver.c
+ * fram_driver.c
  *
  *  Created on: 22/01/2023
- *      Author: Utilizador
+ *      Author: hugobpontes
  */
 #include "fram_driver.h"
 

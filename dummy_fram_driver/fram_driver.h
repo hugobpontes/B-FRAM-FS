@@ -1,8 +1,8 @@
 /*
- * dummy_fram_driver.h
+ * fram_driver.h
  *
  *  Created on: 22/01/2023
- *      Author: Utilizador
+ *      Author: hugobpontes
  */
 
 #ifndef INC_FRAM_DRIVER_H_

@@ -2,7 +2,7 @@
  * B-FRAM-FileSystem.h
  *
  *  Created on: 22/01/2023
- *      Author: Utilizador
+ *      Author: hugobpontes
  */
 
 #ifndef INC_B_FRAM_FILESYSTEM_H_
@@ -107,6 +107,43 @@ typedef struct file_system
 
 
 bffs_st save_fs();
+/*******************************************************************
+* NAME :            int KB_GetLine(pKbdBuf, MaxChars)
+*
+* DESCRIPTION :     Input line of text from keyboard
+*
+* INPUTS :
+*       PARAMETERS:
+*           int     MaxChars                max chars to read before beeping
+*       GLOBALS :
+*           struct  Terminal                Terminal description (in termdata.h)
+*                   char    .BackspaceCode  Code for backspace
+*                   char *  .CharSet        keyboard conversion tables
+* OUTPUTS :
+*       PARAMETERS:
+*           char    * pKbdBuf               -> buffer for keyboard chars
+*       GLOBALS :
+*            None
+*       RETURN :
+*            Type:   int                    Error code:
+*            Values: VALID_DATA             valid read
+*                    KB_BAD_DATA            invalid kbd data
+*                    KB_DISCONNECTED        keyboard not present
+* PROCESS :
+*                   [1]  Clear keyboard buffer
+*                   [2]  Do
+*                   [3]    Get character
+*                   [4]    Translate characters
+*                   [5]  Until CR or buffer full
+*
+* NOTES :           Unknown characters returned as '*'
+*                   Backspace is the only editing allowed.
+* CHANGES :
+* REF NO    DATE    WHO     DETAIL
+*           12Feb96 AO      Original Code
+* FX14326   22Jan99 JR      Fix: backspace at character zero in
+*                           keyboard buffer disallowed!
+*/
 bffs_st load_fs();
 bffs_st reset_fs(uint16_t fs_size);
 bffs_st mount_fs(uint16_t fs_size, bffs_mount_option option);
