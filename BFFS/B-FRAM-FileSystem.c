@@ -11,7 +11,7 @@ bffs_st load_fs()
 {
 	read_FRAM(0,FS_SIZE,&BFFS);
 
-	//try to look for faulty conditions to validat the fs that is being loaded
+	//try to look for faulty conditions to validate the fs that is being loaded
 	if (BFFS.end_ptr>FRAM_SIZE)
 	{
 		return MOUNT_FS_INVALID_FS;
@@ -38,6 +38,7 @@ bffs_st reset_fs(uint16_t fs_size)
 	{
 		return MOUNT_FS_NO_MEMORY;
 	}
+	//reset the file system to a clean state
 	BFFS.file_idx = 0;
 	BFFS.start_ptr = FS_OFFSET;
 	BFFS.write_ptr = FS_OFFSET;
@@ -50,6 +51,7 @@ bffs_st reset_fs(uint16_t fs_size)
 
 bffs_st mount_fs(uint16_t fs_size, bffs_mount_option option)
 {
+	//either load stored fs from FRAM or reset to clean state based on input option
 	bffs_st status;
 	switch (option)
 	{
@@ -66,6 +68,7 @@ bffs_st mount_fs(uint16_t fs_size, bffs_mount_option option)
 
 bffs_st create_file(char* filename, uint16_t file_size, file_t** file_ptr_ptr)
 {
+	//Check if file ptr is valid
 	if (file_ptr_ptr == NULL)
 	{
 		return CREATE_FILE_INVALID_FILE_PTR;
@@ -104,6 +107,8 @@ bffs_st create_file(char* filename, uint16_t file_size, file_t** file_ptr_ptr)
 	{
 		return CREATE_FILE_FILE_TOO_LARGE;
 	}
+	/*No problems detected*/
+
 	/*Set filename*/
 	strcpy(BFFS.files[BFFS.file_idx].filename,temp_str);
 
@@ -114,17 +119,20 @@ bffs_st create_file(char* filename, uint16_t file_size, file_t** file_ptr_ptr)
 	BFFS.files[BFFS.file_idx].write_ptr = BFFS.write_ptr;
 	BFFS.files[BFFS.file_idx].read_ptr  = BFFS.write_ptr;
 
+	//Set input file_ptr to point to a file in the file system.
 	*file_ptr_ptr = &(BFFS.files[BFFS.file_idx]);
 
 	BFFS.file_idx++;
 	BFFS.write_ptr+= file_size;
 
+	/*Save file system in the beginning of FRAM, since it is now in a new state that should be loadable later*/
 	save_fs();
 	return CREATE_FILE_SUCCESS;
 }
 
 bffs_st open_file(char* filename,file_t** file_ptr_ptr)
 {
+	/*Check if file ptr is valid */
 	if (file_ptr_ptr == NULL)
 	{
 		return OPEN_FILE_INVALID_FILE_PTR;
@@ -140,6 +148,7 @@ bffs_st open_file(char* filename,file_t** file_ptr_ptr)
 	{
 		if (!strcmp(temp_str,BFFS.files[search_idx].filename))
 		{
+			/*If a file with a matchiing file name is found, make the input pointer point to it. */
 			*file_ptr_ptr = &(BFFS.files[search_idx]);
 			(*file_ptr_ptr)->read_ptr = (*file_ptr_ptr)->start_ptr; //reset read so any loaded read ptrs are reset
 		    return OPEN_FILE_SUCCESS;
@@ -152,6 +161,7 @@ bffs_st open_file(char* filename,file_t** file_ptr_ptr)
 
 uint16_t write_file(file_t* file_ptr, uint16_t data_length, void* data_ptr)
 {
+	/*Check pointer validity*/
 	if (file_ptr == NULL)
 	{
 		return WRITE_FILE_INVALID_FILE_PTR;
@@ -160,18 +170,22 @@ uint16_t write_file(file_t* file_ptr, uint16_t data_length, void* data_ptr)
 	{
 		return WRITE_FILE_INVALID_DATA_PTR;
 	}
+	/*Check data length is not 0 */
 	if (data_length == 0)
 	{
 		return WRITE_FILE_BAD_LENGTH;
 	}
+	/*Check if given current file pointer, the new file length would overflow it */
 	uint16_t write_end_ptr = file_ptr->write_ptr+data_length;
 	if (write_end_ptr > file_ptr->end_ptr)
 	{
 		return WRITE_FILE_OVERFLOW;
 	}
+	/*Write file data in the FRAM */
 	write_FRAM(file_ptr->write_ptr,data_length,data_ptr);
 	file_ptr->write_ptr+=data_length;
 
+	/*Save the FS state in the FRAM, since we have updated the file pointers */
 	save_fs();
 	return WRITE_FILE_SUCCESS;
 
@@ -179,6 +193,7 @@ uint16_t write_file(file_t* file_ptr, uint16_t data_length, void* data_ptr)
 
 bffs_st read_file(file_t* file_ptr, uint16_t data_length, void* data_ptr, bffs_read_file_option option)
 {
+	/*Check pointer validity */
 	if (file_ptr == NULL)
 	{
 		return READ_FILE_INVALID_FILE_PTR;
@@ -187,37 +202,46 @@ bffs_st read_file(file_t* file_ptr, uint16_t data_length, void* data_ptr, bffs_r
 	{
 		return READ_FILE_INVALID_DATA_PTR;
 	}
+	/*Check data length is not 0 */
 	if (data_length == 0)
 	{
 		return READ_FILE_BAD_LENGTH;
 	}
+	/*Check if attempted read will overflow the file*/
 	uint16_t read_end_ptr = file_ptr->read_ptr+data_length;
 	if (read_end_ptr > file_ptr->end_ptr)
 	{
 		return READ_FILE_OVERFLOW;
 	}
+	/*Read FRAM at the specified location */
 	read_FRAM(file_ptr->read_ptr,data_length,data_ptr);
 	if (option == READ_FILE_RESET_READ_PTR)
+		/*Reset the read pointer to the start if such is specified */
 		file_ptr->read_ptr = file_ptr->start_ptr;
 	return READ_FILE_SUCCESS;
 }
 
 bffs_st clear_file(file_t* file_ptr)
 {
+	/*Create temp data containing 0 */
 	uint8_t zero = 0;
 
+	/*Check pointer validity`*/
 	if (file_ptr == NULL)
 	{
 		return CLEAR_FILE_INVALID_FILE_PTR;
 	}
+	/*Write 0s in all the FRAM bytes that are within a file's boundaries */
 	for (uint32_t idx = 0; idx<(file_ptr->end_ptr-file_ptr->start_ptr);idx++)
 	{
 		write_FRAM(file_ptr->start_ptr+idx,1,&zero);
 	}
 
+	/*Reset pointers */
 	file_ptr->read_ptr = file_ptr->start_ptr;
 	file_ptr->write_ptr = file_ptr->start_ptr;
 
+	/*Save the FS state in the FRAM, since we have updated the file pointers */
 	save_fs();
 
 	return CLEAR_FILE_SUCCESS;
@@ -226,22 +250,27 @@ bffs_st clear_file(file_t* file_ptr)
 
 bffs_st seek_file(file_t* file_ptr, uint16_t byte)
 {
+	/*CHeck ptr validity */
 	if (file_ptr == NULL)
 	{
 		return SEEK_FILE_INVALID_FILE_PTR;
 	}
+	/*Check if byte want to read at later is within the file boundaries*/
 	if (file_ptr->start_ptr+byte>file_ptr->end_ptr)
 	{
 		return SEEK_FILE_OVERFLOW;
 	}
+	/*Set read pointer as specified*/
 	file_ptr->read_ptr = file_ptr->start_ptr+byte;
 	return SEEK_FILE_SUCCESS;
 }
 
 uint16_t tell_file(file_t* file_ptr)
 {
+	/*Simply return the read byte in relation to the start of the file */
 	return file_ptr->read_ptr-file_ptr->start_ptr;
 }
+/*The functions below are very self explanatory and thus are not commented */
 
 uint16_t get_fs_free_bytes(void)
 {
@@ -279,6 +308,7 @@ uint16_t get_file_size(file_t* file_ptr)
 
 //Missing functionality:
 //Deleting files (involves managing remaining file slots)
+//Listing all files
 //Untested functionality:
 //Loading FS from FRAM
 

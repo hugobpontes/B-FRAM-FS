@@ -8,7 +8,7 @@
 #ifndef INC_FRAM_DRIVER_H_
 #define INC_FRAM_DRIVER_H_
 
-#define FRAM_SIZE 8192
+#define FRAM_SIZE 8192 //Sizes in bytes of the FRAM
 
 #include <stdint.h>
 

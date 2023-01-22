@@ -13,7 +13,7 @@
 #include <string.h>
 #include "fram_driver.h"
 
-#define MAX_FILES	20 //Max allowed files on the file system
+#define MAX_FILES	20 //Max allowed files that can be stored in the file system
 #define MAX_FILENAME_SIZE 10
 
 #define FILE_SIZE 8+(MAX_FILENAME_SIZE) //Size in bytes of a file struct
@@ -83,8 +83,9 @@ typedef enum
 	SAVE_FS_SUCCESS,
 } bffs_st;
 
-//Pointers refer to the fram address, not the the byte within a file
-
+/*File: pointers refer to the fram address, not the the byte within a file. Start and end pointers define where in
+ * FRAM the file data stars and ends, while the others define where data is being written and read
+ */
 typedef struct file
 {
 
@@ -95,6 +96,9 @@ typedef struct file
   uint16_t end_ptr;
 } file_t;
 
+/*File System: pointers refer to the fram address, not the the byte within a file. Start and end pointers define where in
+ * FRAM the file data can be stored, while write ptr defines where new created file's data is being stored in.
+ */
 typedef struct file_system
 {
   file_t files[MAX_FILES];
@@ -108,43 +112,49 @@ typedef struct file_system
 
 bffs_st save_fs();
 /*******************************************************************
-* NAME :            int KB_GetLine(pKbdBuf, MaxChars)
+* NAME :            save_fs
 *
-* DESCRIPTION :     Input line of text from keyboard
+* DESCRIPTION :     Save file system struct at the beginning of FRAM
 *
 * INPUTS :
 *       PARAMETERS:
-*           int     MaxChars                max chars to read before beeping
+
 *       GLOBALS :
-*           struct  Terminal                Terminal description (in termdata.h)
-*                   char    .BackspaceCode  Code for backspace
-*                   char *  .CharSet        keyboard conversion tables
+*           file_system_t BFFS: File System Handle
+*           #define		  FS_SIZE: Macro defining the size of the file system struct
 * OUTPUTS :
 *       PARAMETERS:
-*           char    * pKbdBuf               -> buffer for keyboard chars
 *       GLOBALS :
-*            None
 *       RETURN :
-*            Type:   int                    Error code:
-*            Values: VALID_DATA             valid read
-*                    KB_BAD_DATA            invalid kbd data
-*                    KB_DISCONNECTED        keyboard not present
+*          bffs_st status: Status of the operation
 * PROCESS :
-*                   [1]  Clear keyboard buffer
-*                   [2]  Do
-*                   [3]    Get character
-*                   [4]    Translate characters
-*                   [5]  Until CR or buffer full
+*                   [1]  Write FS struct in start of FRAM
 *
-* NOTES :           Unknown characters returned as '*'
-*                   Backspace is the only editing allowed.
-* CHANGES :
-* REF NO    DATE    WHO     DETAIL
-*           12Feb96 AO      Original Code
-* FX14326   22Jan99 JR      Fix: backspace at character zero in
-*                           keyboard buffer disallowed!
 */
 bffs_st load_fs();
+/*******************************************************************
+* NAME :            load_fs
+*
+* DESCRIPTION :     Load file system struct from the beginning of FRAM
+*
+* INPUTS :
+*       PARAMETERS:
+
+*       GLOBALS :
+*           file_system_t BFFS: File System Handle
+*           #define		  FS_SIZE: Macro defining the size of the file system struct
+*           #define		  FRAM_SIZE: Total size of the FRAM in bytes
+*           #define		  MAX_FILES: Maximum files that can be stored in the file system
+*
+* OUTPUTS :
+*       PARAMETERS:
+*       GLOBALS :
+*       RETURN :
+*          bffs_st status: Status of the operation
+* PROCESS :
+*                   [1] Load FS struct from start of FRAM
+*
+*/
 bffs_st reset_fs(uint16_t fs_size);
 bffs_st mount_fs(uint16_t fs_size, bffs_mount_option option);
 bffs_st create_file(char* filename, uint16_t file_size, file_t** file_ptr_ptr);
@@ -154,6 +164,8 @@ bffs_st read_file(file_t* file_ptr, uint16_t data_length, void* data_ptr, bffs_r
 bffs_st clear_file(file_t* file_ptr);
 bffs_st seek_file(file_t* file_ptr, uint16_t byte);
 uint16_t tell_file(file_t* file_ptr);
+
+//From now on functions are pretty self explanatory and simple, so i didnt bother putting a header
 uint16_t get_fs_free_bytes(void);
 uint16_t get_fs_size(void);
 uint16_t get_fs_free_file_slots(void);
