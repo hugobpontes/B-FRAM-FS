@@ -6,9 +6,9 @@ file_system_t BFFS;
 int main(void)
 {
 	printf("FRAM Size: %d\n",FRAM_SIZE);
-	printf("File Size: %d\n",FILE_SIZE);
+	printf("File Size: %d\n",FILE_STRCT_SIZE);
 	printf("Max Files: %d\n",MAX_FILES);
-	printf("FS Size =(Max Files*File Size)+8 = FS_OFFSET: %d\n",FS_SIZE);
+	printf("FS Size =(Max Files*File Size)+8 = FS_OFFSET: %d\n",FS_STRCT_SIZE);
 	printf("Usable Size: FRAM Size - FS Size = %d \n",USABLE_SIZE);
 	printf("--------------------------------\n");
 
@@ -86,7 +86,7 @@ int main(void)
 
 	if ((status = read_file(myfile1,3,&data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
 		return status;
-	printf("On file 1: have 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
+	printf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
 
 	printf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
 			get_fs_free_bytes(),

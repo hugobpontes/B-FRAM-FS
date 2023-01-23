@@ -6,10 +6,14 @@ I've also included a dummy driver that emulates FRAM as a uint8_t array just to 
 
 ## Contents
 BFFS: File system source and header file
+
 Examples: Examples of programs that use this file system and drivers
+
 Dummy FRAM Driver: Dummy driver that includes software for interaction with an emulated FRAM (as a uint8_t array) just to test the file system functions.
+
 SPI FRAM Driver: Driver that includes the software for interaction with the selected FRAM using SPI.
 
+Template FRAM Driver: Template driver files with instruction on how to write your own driver
 ## Features
 
 The functions that the file system provides are: (fs meaning file system)
@@ -40,6 +44,7 @@ get_FRAM_status(void* data_ptr);
 write_FRAM(uint16_t address,uint16_t data_length,void* data_ptr);
 read_FRAM(uint16_t address,uint16_t data_length,void* data_ptr);
 ```
+More details of all these functions are present in the source code and they are documented in the header files
 ## Limitations
 This file system provides no way to delete files and no way to list all files in the file system, which means that if you reach the maximum file limit, you will have to reset the whole file system in order to write more data; Additionally, if you load a FS from the FRAM, you won't know what files are written there, unless you were the one to put them there.
  

@@ -3,13 +3,15 @@
 /* File System functions */
 bffs_st save_fs()
 {
-	write_FRAM(0,FS_SIZE,&BFFS);
+	/* Write file system strct in the beginning of FRAM*/
+	write_FRAM(0,FS_STRCT_SIZE,&BFFS);
 	return SAVE_FS_SUCCESS;
 }
 
 bffs_st load_fs()
 {
-	read_FRAM(0,FS_SIZE,&BFFS);
+	/* Read file system strct from the beginning of FRAM*/
+	read_FRAM(0,FS_STRCT_SIZE,&BFFS);
 
 	//try to look for faulty conditions to validate the fs that is being loaded
 	if (BFFS.end_ptr>FRAM_SIZE)
@@ -34,6 +36,7 @@ bffs_st load_fs()
 
 bffs_st reset_fs(uint16_t fs_size)
 {
+	/* Check if specified fs size fits inside FRAM */
 	if (fs_size > USABLE_SIZE)
 	{
 		return MOUNT_FS_NO_MEMORY;
@@ -43,6 +46,8 @@ bffs_st reset_fs(uint16_t fs_size)
 	BFFS.start_ptr = FS_OFFSET;
 	BFFS.write_ptr = FS_OFFSET;
 	BFFS.end_ptr = BFFS.start_ptr+fs_size;
+
+	/*Save the current state of the fs in the beginning of FRAM */
 	save_fs();
 
 	return MOUNT_FS_SUCCESS;
