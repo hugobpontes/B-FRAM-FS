@@ -19,6 +19,7 @@ static void MX_SPI1_Init(void);
 
 file_system_t BFFS;
 
+
 int myprintf(const char *format, ...)
 {
     char str[200];
@@ -48,11 +49,13 @@ int main(void)
 	myprintf("Usable Size: FRAM Size - FS Size = %d \n",USABLE_SIZE);
 	myprintf("--------------------------------\n");
 
+
+	uint8_t first_run = 0;
+
 	bffs_st status;
 
 	file_t* myfile1;
 	file_t* myfile2;
-	file_t* myfile2_alt;
 
 	uint8_t data_w1_1[3] = {10,20,30};
 	uint8_t data_r;
@@ -61,77 +64,105 @@ int main(void)
 	char myfilename1[10] = "file1.txt";
 	char myfilename2[10] = "file2.txt";
 
-	myprintf("Mounting file system with reset option... \n");
-	if ((status = mount_fs(USABLE_SIZE,FS_MOUNT_OPTION_RESET)) != MOUNT_FS_SUCCESS)
-		return status;
+	if (first_run)
+	{
+		myprintf("Reset file system \n");
+		if ((status = reset_fs()) != RESET_FS_SUCCESS)
+			while(1);
 
-	/*myprintf("Mounting file system with load option... \n");
-	if ((status = mount_fs(USABLE_SIZE,FS_MOUNT_OPTION_LOAD)) != MOUNT_FS_SUCCESS)
-		return status;*/
+		myprintf("Mounting file system \n");
+		if ((status = mount_fs()) != MOUNT_FS_SUCCESS)
+			while(1);
 
-	myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
-			get_fs_free_bytes(),
-			get_fs_size(),
-			get_fs_free_file_slots(),
-			get_fs_total_file_slots(),
-			get_fs_total_files());
+		myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
+				get_fs_free_bytes(),
+				get_fs_size(),
+				get_fs_free_file_slots(),
+				get_fs_total_file_slots(),
+				get_fs_total_files());
 
-	myprintf("Creating file 1... \n");
+		myprintf("Creating file 1... \n");
 
-	if((status = create_file(myfilename1,10,&myfile1)) != CREATE_FILE_SUCCESS)
-		return status;
+		if((status = create_file(myfilename1,10,&myfile1)) != CREATE_FILE_SUCCESS)
+			while(1);
 
-	myprintf("Creating file 2... \n");
+		myprintf("Creating file 2... \n");
 
-	if((status = create_file(myfilename2,10,&myfile2)) != CREATE_FILE_SUCCESS)
-		return status;
+		if((status = create_file(myfilename2,10,&myfile2)) != CREATE_FILE_SUCCESS)
+			while(1);
 
-	myprintf("Pointlessly opening file after its creation to demonstrate opening feature...\n");
-	if((status = open_file(myfilename2,&myfile2_alt)) != OPEN_FILE_SUCCESS)
-		return status;
+		myprintf(" File 1 Free Bytes: %d \n File Taken Bytes: %d\n Total File Size: %d\n File Read pointer at :%d\n",
+				get_file_free_bytes(myfile1),
+				get_file_used_bytes(myfile1),
+				get_file_size(myfile1),
+				tell_file(myfile1));
 
-	myprintf("Bool value to check if both pointers to myfile2 are valid: %d \n",myfile2_alt == myfile2);
+		myprintf("Writing [%d,%d,%d] to file 1...\n",data_w1_1[0],data_w1_1[1],data_w1_1[2]);
+		if ((status = write_file(myfile1,3,data_w1_1)) != WRITE_FILE_SUCCESS)
+			while(1);
+		myprintf("Seeking byte 2 of file 1...\n");
+		if ((status = seek_file(myfile1,2)) != SEEK_FILE_SUCCESS)
+			while(1);
+		myprintf(" File 1 Free Bytes: %d \n File Taken Bytes: %d\n Total File Size: %d\n File Read pointer at: %d\n",
+				get_file_free_bytes(myfile1),
+				get_file_used_bytes(myfile1),
+				get_file_size(myfile1),
+				tell_file(myfile1));
 
-	myprintf(" File 1 Free Bytes: %d \n File Taken Bytes: %d\n Total File Size: %d\n File Read pointer at :%d\n",
-			get_file_free_bytes(myfile1),
-			get_file_used_bytes(myfile1),
-			get_file_size(myfile1),
-			tell_file(myfile1));
+		if ((status = read_file(myfile1,1,&data_r,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
+			while(1);
+		myprintf("On file 1: have read 1 byte at sought position, resetting read pointer, data: %d \n",data_r);
 
-	myprintf("Writing [%d,%d,%d] to file 1...\n",data_w1_1[0],data_w1_1[1],data_w1_1[2]);
-	if ((status = write_file(myfile1,3,data_w1_1)) != WRITE_FILE_SUCCESS)
-		return status;
-	myprintf("Seeking byte 2 of file 1...\n");
-	if ((status = seek_file(myfile1,2)) != SEEK_FILE_SUCCESS)
-		return status;
-	myprintf(" File 1 Free Bytes: %d \n File Taken Bytes: %d\n Total File Size: %d\n File Read pointer at: %d\n",
-			get_file_free_bytes(myfile1),
-			get_file_used_bytes(myfile1),
-			get_file_size(myfile1),
-			tell_file(myfile1));
+		if ((status = read_file(myfile1,3,&data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
+			while(1);
+		myprintf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
 
-	if ((status = read_file(myfile1,1,&data_r,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
-		return status;
-	myprintf("On file 1: have read 1 byte at sought position, resetting read pointer, data: %d \n",data_r);
+		myprintf("Clearing file 1\n");
+		if ((status = clear_file(myfile1)) != CLEAR_FILE_SUCCESS)
+			while(1);
 
-	if ((status = read_file(myfile1,3,&data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
-		return status;
-	myprintf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
+		if ((status = read_file(myfile1,3,&data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
+			while(1);
+		myprintf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
 
-	myprintf("Clearing file 1\n");
-	if ((status = clear_file(myfile1)) != CLEAR_FILE_SUCCESS)
-		return status;
+		myprintf("Writing [%d,%d,%d] to file 1 AGAIN...\n",data_w1_1[0],data_w1_1[1],data_w1_1[2]);
+		if ((status = write_file(myfile1,3,data_w1_1)) != WRITE_FILE_SUCCESS)
+			while(1);
 
-	if ((status = read_file(myfile1,3,&data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
-		return status;
-	myprintf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
+		myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
+				get_fs_free_bytes(),
+				get_fs_size(),
+				get_fs_free_file_slots(),
+				get_fs_total_file_slots(),
+				get_fs_total_files());
+	}
+	else
+	{
+		myprintf("Mounting file system \n");
+		if ((status = mount_fs()) != MOUNT_FS_SUCCESS)
+			while(1);
 
-	myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
-			get_fs_free_bytes(),
-			get_fs_size(),
-			get_fs_free_file_slots(),
-			get_fs_total_file_slots(),
-			get_fs_total_files());
+		myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
+				get_fs_free_bytes(),
+				get_fs_size(),
+				get_fs_free_file_slots(),
+				get_fs_total_file_slots(),
+				get_fs_total_files());
+
+		myprintf("Opening %s...\n",myfilename1);
+		if((status = open_file(myfilename1,&myfile1)) != OPEN_FILE_SUCCESS)
+			while(1);
+
+		myprintf(" File 1 Free Bytes: %d \n File Taken Bytes: %d\n Total File Size: %d\n File Read pointer at: %d\n",
+				get_file_free_bytes(myfile1),
+				get_file_used_bytes(myfile1),
+				get_file_size(myfile1),
+				tell_file(myfile1));
+		if ((status = read_file(myfile1,3,&data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
+			while(1);
+		myprintf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
+
+	}
 }
 
 /**

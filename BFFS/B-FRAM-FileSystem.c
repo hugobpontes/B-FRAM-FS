@@ -16,59 +16,62 @@ bffs_st load_fs()
 	//try to look for faulty conditions to validate the fs that is being loaded
 	if (BFFS.end_ptr>FRAM_SIZE)
 	{
-		return MOUNT_FS_INVALID_FS;
+		return LOAD_FS_INVALID_FS;
 	}
 	if (BFFS.write_ptr>BFFS.end_ptr)
 	{
-		return MOUNT_FS_INVALID_FS;
+		return LOAD_FS_INVALID_FS;
 	}
 	if (BFFS.file_idx > MAX_FILES)
 	{
-		return MOUNT_FS_INVALID_FS;
+		return LOAD_FS_INVALID_FS;
+	}
+	if (BFFS.file_idx == 0)
+	{
+		return LOAD_FS_INVALID_FS;
 	}
 	if (BFFS.start_ptr>BFFS.write_ptr)
 	{
-		return MOUNT_FS_INVALID_FS;
+		return LOAD_FS_INVALID_FS;
 	}
-	return MOUNT_FS_SUCCESS;
+	return LOAD_FS_SUCCESS;
 
 }
 
-bffs_st reset_fs(uint16_t fs_size)
+bffs_st reset_fs()
 {
-	/* Check if specified fs size fits inside FRAM */
-	if (fs_size > USABLE_SIZE)
-	{
-		return MOUNT_FS_NO_MEMORY;
-	}
 	//reset the file system to a clean state
 	BFFS.file_idx = 0;
 	BFFS.start_ptr = FS_OFFSET;
 	BFFS.write_ptr = FS_OFFSET;
-	BFFS.end_ptr = BFFS.start_ptr+fs_size;
+	BFFS.end_ptr = BFFS.start_ptr+USABLE_SIZE;
 
 	/*Save the current state of the fs in the beginning of FRAM */
 	save_fs();
 
-	return MOUNT_FS_SUCCESS;
+	return RESET_FS_SUCCESS;
 }
 
 
-bffs_st mount_fs(uint16_t fs_size, bffs_mount_option option)
+bffs_st mount_fs()
 {
-	//either load stored fs from FRAM or reset to clean state based on input option
+	/*Attempt to load stored fs from FRAM and reset to clean state if no FS is stored*/
 	bffs_st status;
-	switch (option)
-	{
-	case FS_MOUNT_OPTION_LOAD:
-		status = load_fs();
-		break;
-	case FS_MOUNT_OPTION_RESET:
-		status = reset_fs(fs_size);
-		break;
-	}
-	return status;
 
+	status = load_fs();
+
+	if (status!=LOAD_FS_SUCCESS)
+	{
+		status = reset_fs();
+	}
+	if ((status == RESET_FS_SUCCESS) || (status == LOAD_FS_SUCCESS))
+	{
+		return MOUNT_FS_SUCCESS;
+	}
+	else
+	{
+		return MOUNT_FS_FAILED;
+	}
 }
 
 bffs_st create_file(char* filename, uint16_t file_size, file_t** file_ptr_ptr)
@@ -311,10 +314,5 @@ uint16_t get_file_size(file_t* file_ptr)
 	return file_ptr->end_ptr-file_ptr->start_ptr;
 }
 
-//Missing functionality:
-//Deleting files (involves managing remaining file slots)
-//Listing all files
-//Untested functionality:
-//Loading FS from FRAM
 
 

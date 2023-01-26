@@ -24,15 +24,6 @@
 #define USABLE_SIZE (FRAM_SIZE) - (FS_STRCT_SIZE) //Bytes of FRAM that can be used to store data
 
 
-
-/*Enumeration to define all possible mount options for the fs_mount function*/
-typedef enum
-{
-    FS_MOUNT_OPTION_RESET,
-	FS_MOUNT_OPTION_LOAD,
-}
-	bffs_mount_option;
-
 /*Enumeration to define all possible mount options for the read_file function*/
 typedef enum
 {
@@ -53,9 +44,11 @@ typedef enum
 	CREATE_FILE_NO_FILE_SLOTS,
 	//
     MOUNT_FS_SUCCESS,
-	MOUNT_FS_NO_MEMORY,
-	MOUNT_FS_BAD_OPTION,
-	MOUNT_FS_INVALID_FS,
+	MOUNT_FS_FAILED, //this is only set if reset and load failed
+	RESET_FS_SUCCESS,
+	RESET_FS_NO_MEMORY,
+	LOAD_FS_INVALID_FS,
+	LOAD_FS_SUCCESS,
 	//
     WRITE_FILE_SUCCESS,
 	WRITE_FILE_OVERFLOW,
@@ -155,7 +148,7 @@ bffs_st load_fs();
 *          [1] Load FS struct from start of FRAM
 *
 */
-bffs_st reset_fs(uint16_t fs_size);
+bffs_st reset_fs();
 /*******************************************************************
 * NAME :            reset_fs
 *
@@ -163,7 +156,6 @@ bffs_st reset_fs(uint16_t fs_size);
 *
 * INPUTS :
 *       PARAMETERS:
-*			uint16_t 	  fs_size: size in bytes that the user wants to allocate for the file system
 *       GLOBALS :
 *			#define		  FS_OFFSET: FRAM byte in which the file system can start storing data
 *
@@ -174,12 +166,11 @@ bffs_st reset_fs(uint16_t fs_size);
 *       RETURN :
 *          bffs_st 		 status: Status of the operation
 * PROCESS :
-*          [1] Check if input file system size fits inside FRAM
-*          [2] Reset file system: file idx; start pointer; end pointer; write pointer
-*          [3] Save FS struct in FRAM for loading at a future time
+*          [1] Reset file system: file idx; start pointer; end pointer; write pointer
+*          [2] Save FS struct in FRAM for loading at a future time
 *
 */
-bffs_st mount_fs(uint16_t fs_size, bffs_mount_option option);
+bffs_st mount_fs();
 /*******************************************************************
 * NAME :           mount_fs
 *
@@ -187,8 +178,6 @@ bffs_st mount_fs(uint16_t fs_size, bffs_mount_option option);
 *
 * INPUTS :
 *       PARAMETERS:
-*			uint16_t 	  		fs_size: size in bytes that the user wants to allocate for the file system
-*			bffs_mount_option 	option: option to select whether to load or reset the file system (see typedef enum)
 *       GLOBALS :
 * OUTPUTS :
 *       PARAMETERS:
@@ -197,8 +186,8 @@ bffs_st mount_fs(uint16_t fs_size, bffs_mount_option option);
 *       RETURN :
 *           bffs_st 			status: Status of the operation
 * PROCESS :
-*           [1] Check option to determine whether to reset or load
-*           [2] Reset (reset_fs) or load (load_fs)
+*           [1] Attempt to load the FS
+*           [2] If failed, reset the FS to a clean state
 *
 */
 bffs_st create_file(char* filename, uint16_t file_size, file_t** file_ptr_ptr);
