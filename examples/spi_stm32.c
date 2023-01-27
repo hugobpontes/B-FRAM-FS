@@ -10,6 +10,7 @@
 SPI_HandleTypeDef hspi1;
 
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_rx;
 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -49,14 +50,14 @@ int main(void)
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
 
 	myprintf("FRAM Size: %d\n",FRAM_SIZE);
-	myprintf("File Size: %d\n",FILE_STRCT_SIZE);
+	myprintf("File Struct Size: %d\n",FILE_STRCT_SIZE);
 	myprintf("Max Files: %d\n",MAX_FILES);
-	myprintf("FS Size =(Max Files*File Size)+8 = FS_OFFSET: %d\n",FS_STRCT_SIZE);
+	myprintf("FS Struct Size =(Max Files*File Size)+8 = FS_OFFSET: %d\n",FS_STRCT_SIZE);
 	myprintf("Usable Size: FRAM Size - FS Size = %d \n",USABLE_SIZE);
 	myprintf("--------------------------------\n");
 
 
-	uint8_t first_run = 1;
+	uint8_t first_run = 0;
 
 	bffs_st status;
 
@@ -72,12 +73,13 @@ int main(void)
 
 	if (first_run) //To run first
 	{
-		myprintf("Reset file system \n");
-		if ((status = reset_fs()) != RESET_FS_SUCCESS)
-			while(1);
 
 		myprintf("Mounting file system \n");
 		if ((status = mount_fs()) != MOUNT_FS_SUCCESS)
+			while(1);
+
+		myprintf("Reset file system \n"); //for this example we want a cleared file system
+		if ((status = reset_fs()) != RESET_FS_SUCCESS)
 			while(1);
 
 		myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
