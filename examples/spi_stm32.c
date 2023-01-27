@@ -6,6 +6,7 @@
 #include "B-FRAM-FileSystem.h"
 #include "fram_driver.h"
 
+#define FIRST_RUN
 
 SPI_HandleTypeDef hspi1;
 
@@ -22,7 +23,7 @@ static void MX_SPI1_Init(void);
 file_system_t BFFS;
 
 /*Function to facilitate debugging through uart2, adapt to your needs */
-int myprintf(const char *format, ...)
+int stm32printf(const char *format, ...)
 {
     char str[200];
     va_list args;
@@ -49,15 +50,12 @@ int main(void)
 
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
 
-	myprintf("FRAM Size: %d\n",FRAM_SIZE);
-	myprintf("File Struct Size: %d\n",FILE_STRCT_SIZE);
-	myprintf("Max Files: %d\n",MAX_FILES);
-	myprintf("FS Struct Size =(Max Files*File Size)+8 = FS_OFFSET: %d\n",FS_STRCT_SIZE);
-	myprintf("Usable Size: FRAM Size - FS Size = %d \n",USABLE_SIZE);
-	myprintf("--------------------------------\n");
-
-
-	uint8_t first_run = 0;
+	stm32printf("FRAM Size: %d\n",FRAM_SIZE);
+	stm32printf("File Struct Size: %d\n",FILE_STRCT_SIZE);
+	stm32printf("Max Files: %d\n",MAX_FILES);
+	stm32printf("FS Struct Size =(Max Files*File Size)+8 = FS_OFFSET: %d\n",FS_STRCT_SIZE);
+	stm32printf("Usable Size: FRAM Size - FS Size = %d \n",USABLE_SIZE);
+	stm32printf("--------------------------------\n");
 
 	bffs_st status;
 
@@ -71,47 +69,46 @@ int main(void)
 	char myfilename1[10] = "file1.txt";
 	char myfilename2[10] = "file2.txt";
 
-	if (first_run) //To run first
-	{
+#ifdef FIRST_RUN //To run first
 
-		myprintf("Mounting file system \n");
+		stm32printf("Mounting file system \n");
 		if ((status = mount_fs()) != MOUNT_FS_SUCCESS)
 			while(1);
 
-		myprintf("Reset file system \n"); //for this example we want a cleared file system
+		stm32printf("Reset file system \n"); //for this example we want a cleared file system
 		if ((status = reset_fs()) != RESET_FS_SUCCESS)
 			while(1);
 
-		myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
+		stm32printf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
 				get_fs_free_bytes(),
 				get_fs_size(),
 				get_fs_free_file_slots(),
 				get_fs_total_file_slots(),
 				get_fs_total_files());
 
-		myprintf("Creating file 1... \n");
+		stm32printf("Creating file 1... \n");
 
 		if((status = create_file(myfilename1,10,&myfile1)) != CREATE_FILE_SUCCESS)
 			while(1);
 
-		myprintf("Creating file 2... \n");
+		stm32printf("Creating file 2... \n");
 
 		if((status = create_file(myfilename2,10,&myfile2)) != CREATE_FILE_SUCCESS)
 			while(1);
 
-		myprintf(" File 1 Free Bytes: %d \n File Taken Bytes: %d\n Total File Size: %d\n File Read pointer at :%d\n",
+		stm32printf(" File 1 Free Bytes: %d \n File Taken Bytes: %d\n Total File Size: %d\n File Read pointer at :%d\n",
 				get_file_free_bytes(myfile1),
 				get_file_used_bytes(myfile1),
 				get_file_size(myfile1),
 				tell_file(myfile1));
 
-		myprintf("Writing [%d,%d,%d] to file 1...\n",data_w[0],data_w[1],data_w[2]);
+		stm32printf("Writing [%d,%d,%d] to file 1...\n",data_w[0],data_w[1],data_w[2]);
 		if ((status = write_file(myfile1,3,data_w)) != WRITE_FILE_SUCCESS)
 			while(1);
-		myprintf("Seeking byte 2 of file 1...\n");
+		stm32printf("Seeking byte 2 of file 1...\n");
 		if ((status = seek_file(myfile1,2)) != SEEK_FILE_SUCCESS)
 			while(1);
-		myprintf(" File 1 Free Bytes: %d \n File Taken Bytes: %d\n Total File Size: %d\n File Read pointer at: %d\n",
+		stm32printf(" File 1 Free Bytes: %d \n File Taken Bytes: %d\n Total File Size: %d\n File Read pointer at: %d\n",
 				get_file_free_bytes(myfile1),
 				get_file_used_bytes(myfile1),
 				get_file_size(myfile1),
@@ -119,71 +116,69 @@ int main(void)
 
 		if ((status = read_file(myfile1,1,&data_r,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
 			while(1);
-		myprintf("On file 1: have read 1 byte at sought position, resetting read pointer, data: %d \n",data_r);
+		stm32printf("On file 1: have read 1 byte at sought position, resetting read pointer, data: %d \n",data_r);
 
 		if ((status = read_file(myfile1,3,data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
 			while(1);
-		myprintf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
+		stm32printf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
 
-		myprintf("Clearing file 1\n");
+		stm32printf("Clearing file 1\n");
 		if ((status = clear_file(myfile1)) != CLEAR_FILE_SUCCESS)
 			while(1);
 
 		if ((status = read_file(myfile1,3,data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
 			while(1);
-		myprintf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
+		stm32printf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
 
-		myprintf("Writing [%d,%d,%d] to file 1 AGAIN...\n",data_w[0],data_w[1],data_w[2]);
+		stm32printf("Writing [%d,%d,%d] to file 1 AGAIN...\n",data_w[0],data_w[1],data_w[2]);
 		if ((status = write_file(myfile1,3,data_w)) != WRITE_FILE_SUCCESS)
 			while(1);
 
-		myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
+		stm32printf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
 				get_fs_free_bytes(),
 				get_fs_size(),
 				get_fs_free_file_slots(),
 				get_fs_total_file_slots(),
 				get_fs_total_files());
 
-	}
-	else //To run secondly, after turning the first_run flag to 0
-	{
+#else //to run second
 
-		myprintf("Mounting file system \n");
+		stm32printf("Mounting file system \n");
 		if ((status = mount_fs()) != MOUNT_FS_SUCCESS)
 			while(1);
 
-		myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
+		stm32printf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
 				get_fs_free_bytes(),
 				get_fs_size(),
 				get_fs_free_file_slots(),
 				get_fs_total_file_slots(),
 				get_fs_total_files());
 
-		myprintf("Opening %s...\n",myfilename1);
+		stm32printf("Opening %s...\n",myfilename1);
 		if((status = open_file(myfilename1,&myfile1)) != OPEN_FILE_SUCCESS)
 			while(1);
 
-		myprintf(" File 1 Free Bytes: %d \n File Taken Bytes: %d\n Total File Size: %d\n File Read pointer at: %d\n",
+		stm32printf(" File 1 Free Bytes: %d \n File Taken Bytes: %d\n Total File Size: %d\n File Read pointer at: %d\n",
 				get_file_free_bytes(myfile1),
 				get_file_used_bytes(myfile1),
 				get_file_size(myfile1),
 				tell_file(myfile1));
 		if ((status = read_file(myfile1,3,data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
 			while(1);
-		myprintf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
+		stm32printf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
 
 		if ((status = reset_fs()) != RESET_FS_SUCCESS)
 			while(1);
-		myprintf("Reset File System since its the only way of deleting files at the moment \n");
+		stm32printf("Reset File System since its the only way of deleting files at the moment \n");
 
-		myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
+		stm32printf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
 				get_fs_free_bytes(),
 				get_fs_size(),
 				get_fs_free_file_slots(),
 				get_fs_total_file_slots(),
 				get_fs_total_files());
 
-	}
+#endif
 }
 
 /**
