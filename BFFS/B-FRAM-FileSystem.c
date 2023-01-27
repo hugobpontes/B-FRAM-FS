@@ -41,6 +41,9 @@ bffs_st load_fs()
 bffs_st reset_fs()
 {
 	//reset the file system to a clean state
+	//reset file structs
+	memset(&BFFS,0,((FILE_STRCT_SIZE)*(MAX_FILES)));
+	//reset rest of file system
 	BFFS.file_idx = 0;
 	BFFS.start_ptr = FS_OFFSET;
 	BFFS.write_ptr = FS_OFFSET;
