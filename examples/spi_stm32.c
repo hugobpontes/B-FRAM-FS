@@ -10,16 +10,17 @@
 SPI_HandleTypeDef hspi1;
 
 UART_HandleTypeDef huart2;
-DMA_HandleTypeDef hdma_usart2_rx;
 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI1_Init(void);
 
+/*Need to declare FS struct as a global variable*/
+
 file_system_t BFFS;
 
-
+/*Function to facilitate debugging through uart2, adapt to your needs */
 int myprintf(const char *format, ...)
 {
     char str[200];
@@ -33,6 +34,11 @@ int myprintf(const char *format, ...)
 
 int main(void)
 {
+	/*The way this example should be run implies that:
+	 * There is a first run, in which first_run is set to 0, where most file functionality is shown
+	 * There is a second run, in which first_run is set to 1, where the functionality of loading the file system struct
+	 * (including the files in which data was stored in the previous run) from FRAM and handling it.
+	 */
 	HAL_Init();
 	SystemClock_Config();
 
@@ -50,21 +56,21 @@ int main(void)
 	myprintf("--------------------------------\n");
 
 
-	uint8_t first_run = 0;
+	uint8_t first_run = 1;
 
 	bffs_st status;
 
 	file_t* myfile1;
 	file_t* myfile2;
 
-	uint8_t data_w1_1[3] = {10,20,30};
+	uint8_t data_w[3] = {100,200,130};
 	uint8_t data_r;
 	uint8_t data_r2[3];
 
 	char myfilename1[10] = "file1.txt";
 	char myfilename2[10] = "file2.txt";
 
-	if (first_run)
+	if (first_run) //To run first
 	{
 		myprintf("Reset file system \n");
 		if ((status = reset_fs()) != RESET_FS_SUCCESS)
@@ -97,8 +103,8 @@ int main(void)
 				get_file_size(myfile1),
 				tell_file(myfile1));
 
-		myprintf("Writing [%d,%d,%d] to file 1...\n",data_w1_1[0],data_w1_1[1],data_w1_1[2]);
-		if ((status = write_file(myfile1,3,data_w1_1)) != WRITE_FILE_SUCCESS)
+		myprintf("Writing [%d,%d,%d] to file 1...\n",data_w[0],data_w[1],data_w[2]);
+		if ((status = write_file(myfile1,3,data_w)) != WRITE_FILE_SUCCESS)
 			while(1);
 		myprintf("Seeking byte 2 of file 1...\n");
 		if ((status = seek_file(myfile1,2)) != SEEK_FILE_SUCCESS)
@@ -113,7 +119,7 @@ int main(void)
 			while(1);
 		myprintf("On file 1: have read 1 byte at sought position, resetting read pointer, data: %d \n",data_r);
 
-		if ((status = read_file(myfile1,3,&data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
+		if ((status = read_file(myfile1,3,data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
 			while(1);
 		myprintf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
 
@@ -121,12 +127,12 @@ int main(void)
 		if ((status = clear_file(myfile1)) != CLEAR_FILE_SUCCESS)
 			while(1);
 
-		if ((status = read_file(myfile1,3,&data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
+		if ((status = read_file(myfile1,3,data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
 			while(1);
 		myprintf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
 
-		myprintf("Writing [%d,%d,%d] to file 1 AGAIN...\n",data_w1_1[0],data_w1_1[1],data_w1_1[2]);
-		if ((status = write_file(myfile1,3,data_w1_1)) != WRITE_FILE_SUCCESS)
+		myprintf("Writing [%d,%d,%d] to file 1 AGAIN...\n",data_w[0],data_w[1],data_w[2]);
+		if ((status = write_file(myfile1,3,data_w)) != WRITE_FILE_SUCCESS)
 			while(1);
 
 		myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
@@ -135,9 +141,11 @@ int main(void)
 				get_fs_free_file_slots(),
 				get_fs_total_file_slots(),
 				get_fs_total_files());
+
 	}
-	else
+	else //To run secondly, after turning the first_run flag to 0
 	{
+
 		myprintf("Mounting file system \n");
 		if ((status = mount_fs()) != MOUNT_FS_SUCCESS)
 			while(1);
@@ -158,9 +166,20 @@ int main(void)
 				get_file_used_bytes(myfile1),
 				get_file_size(myfile1),
 				tell_file(myfile1));
-		if ((status = read_file(myfile1,3,&data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
+		if ((status = read_file(myfile1,3,data_r2,READ_FILE_RESET_READ_PTR)) != READ_FILE_SUCCESS)
 			while(1);
 		myprintf("On file 1: have read 3 bytes at start, resetting read pointer, data: [%d,%d,%d] \n",data_r2[0],data_r2[1],data_r2[2]);
+
+		if ((status = reset_fs()) != RESET_FS_SUCCESS)
+			while(1);
+		myprintf("Reset File System since its the only way of deleting files at the moment \n");
+
+		myprintf(" FS Free Bytes: %d \n FS Size: %d\n FS Free File Slots: %d\n FS Total File Slots: %d\n FS Total Files: %d\n",
+				get_fs_free_bytes(),
+				get_fs_size(),
+				get_fs_free_file_slots(),
+				get_fs_total_file_slots(),
+				get_fs_total_files());
 
 	}
 }
@@ -223,7 +242,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
